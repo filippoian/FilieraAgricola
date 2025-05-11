@@ -7,7 +7,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class FilieraAgricolaApplication {
 
 	public static void main(String[] args) {
+
 		SpringApplication.run(FilieraAgricolaApplication.class, args);
+
+		System.out.println("FilieraAgricolaApplication started");
 	}
 
 }
