@@ -12,5 +12,4 @@ public class FilieraAgricolaApplication {
 
 		System.out.println("FilieraAgricolaApplication started");
 	}
-
 }
