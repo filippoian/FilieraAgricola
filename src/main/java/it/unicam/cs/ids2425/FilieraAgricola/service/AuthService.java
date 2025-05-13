@@ -5,16 +5,15 @@ import it.unicam.cs.ids2425.FilieraAgricola.dto.request.RegistrazioneRequest;
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.LoginResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.model.Utente;
 import it.unicam.cs.ids2425.FilieraAgricola.repository.UtenteRepository;
+import org.mindrot.jbcrypt.BCrypt;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
 
-    private final UtenteRepository utenteRepository;
-
-    public AuthService(UtenteRepository utenteRepository) {
-        this.utenteRepository = utenteRepository;
-    }
+    @Autowired
+    private UtenteRepository utenteRepository;
 
     public Utente registraUtente(RegistrazioneRequest request) {
         if (utenteRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -24,9 +23,13 @@ public class AuthService {
         Utente nuovoUtente = new Utente();
         nuovoUtente.setNome(request.getNome());
         nuovoUtente.setEmail(request.getEmail());
-        nuovoUtente.setPassword(request.getPassword());
+        String password = request.getPassword();
+        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+
+        nuovoUtente.setPassword(hashedPassword);
         nuovoUtente.setRuolo(request.getRuolo());
 
+        System.out.println("Utente salvato");
         return utenteRepository.save(nuovoUtente);
     }
 
@@ -34,7 +37,10 @@ public class AuthService {
         Utente utente = utenteRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email non registrata"));
 
-        if (!utente.getPassword().equals(request.getPassword())) {
+        String password = request.getPassword();
+        boolean match = BCrypt.checkpw(password, utente.getPassword());
+
+        if (!match) {
             throw new RuntimeException("Password errata");
         }
 

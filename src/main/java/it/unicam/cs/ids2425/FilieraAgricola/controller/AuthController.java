@@ -5,6 +5,7 @@ import it.unicam.cs.ids2425.FilieraAgricola.dto.request.RegistrazioneRequest;
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.LoginResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.model.Utente;
 import it.unicam.cs.ids2425.FilieraAgricola.service.AuthService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<Utente> registra(@RequestBody RegistrazioneRequest request) {
-        return ResponseEntity.ok(authService.registraUtente(request));
+        try {
+            return ResponseEntity.ok(authService.registraUtente(request));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/login")
