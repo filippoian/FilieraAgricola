@@ -5,45 +5,63 @@ import it.unicam.cs.ids2425.FilieraAgricola.dto.request.RegistrazioneRequest;
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.LoginResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.model.Utente;
 import it.unicam.cs.ids2425.FilieraAgricola.repository.UtenteRepository;
-import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import it.unicam.cs.ids2425.FilieraAgricola.config.JwtUtils;
+import it.unicam.cs.ids2425.FilieraAgricola.exception.EmailAlreadyExistException;
+import it.unicam.cs.ids2425.FilieraAgricola.exception.InvalidRoleException;
+import it.unicam.cs.ids2425.FilieraAgricola.model.RuoloUtente;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class AuthService {
 
     @Autowired
     private UtenteRepository utenteRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtils jwtUtils;
 
-    public Utente registraUtente(RegistrazioneRequest request) {
+    public AuthService(UtenteRepository utenteRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
+        this.utenteRepository = utenteRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtils = jwtUtils;
+    }
+
+    public LoginResponse registraUtente(RegistrazioneRequest request) {
+        RuoloUtente ruolo;
+        try {
+            ruolo = RuoloUtente.valueOf(request.getRuolo().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRoleException("Ruolo non valido: " + request.getRuolo());
+        }
+
+        System.out.println("Ruolo ricevuto: " + request.getRuolo());
         if (utenteRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email già registrata");
+            throw new EmailAlreadyExistException("Email già registrata");
         }
 
         Utente nuovoUtente = new Utente();
         nuovoUtente.setNome(request.getNome());
         nuovoUtente.setEmail(request.getEmail());
-        String password = request.getPassword();
-        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+        nuovoUtente.setPassword(passwordEncoder.encode(request.getPassword()));
+        nuovoUtente.setRuolo(ruolo);
 
-        nuovoUtente.setPassword(hashedPassword);
-        nuovoUtente.setRuolo(request.getRuolo());
+        Utente salvato = utenteRepository.save(nuovoUtente);
+        String token = jwtUtils.generateToken(salvato.getEmail(), salvato.getRuolo().name());
 
-        System.out.println("Utente salvato");
-        return utenteRepository.save(nuovoUtente);
+        return new LoginResponse(token, salvato.getId(), salvato.getNome(), salvato.getEmail(), salvato.getRuolo());
     }
 
     public LoginResponse login(LoginRequest request) {
         Utente utente = utenteRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email non registrata"));
 
-        String password = request.getPassword();
-        boolean match = BCrypt.checkpw(password, utente.getPassword());
-
-        if (!match) {
+        if (!passwordEncoder.matches(request.getPassword(), utente.getPassword())) {
             throw new RuntimeException("Password errata");
         }
 
-        return new LoginResponse(utente);
+        String token = jwtUtils.generateToken(utente.getEmail(), utente.getRuolo().name());
+
+        return new LoginResponse(token, utente.getId(), utente.getNome(), utente.getEmail(), utente.getRuolo());
     }
 }
