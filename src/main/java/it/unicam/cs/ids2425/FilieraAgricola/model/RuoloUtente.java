@@ -8,5 +8,5 @@ public enum RuoloUtente {
     ANIMATORE,
     ACQUIRENTE,
     UTENTEGENERICO,
-    GESTORe
+    GESTORE
 }
