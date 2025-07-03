@@ -1,12 +1,12 @@
 package it.unicam.cs.ids2425.FilieraAgricola.model;
 
 public enum RuoloUtente {
-    Produttore,
-    Trasformatore,
-    Distributore,
-    Curatore,
-    Animatore,
-    Acquirente,
-    UtenteGenereico,
-    Gestore
+    PRODUTTORE,
+    TRASFORMATORE,
+    DISTRIBUTORE,
+    CURATORE,
+    ANIMATORE,
+    ACQUIRENTE,
+    UTENTEGENERICO,
+    GESTORE
 }
