@@ -32,6 +32,10 @@ public class Evento {
     @JoinColumn(name = "organizzatore_id")
     private Utente organizzatore;
 
-    @Column(nullable = false)
-    private boolean approvato = false;
+    /**
+     * Collega l'Evento alla sua sottomissione per la Curation (Pattern State).
+     */
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "submission_id")
+    private ContentSubmission submission;
 }

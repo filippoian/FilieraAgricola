@@ -33,12 +33,18 @@ public class Prodotto {
     @JoinColumn(name = "utente_id")
     private Utente utente;
 
-    // --- CAMPO AGGIUNTO ---
     /**
      * Stato del prodotto nel ciclo di Curation (BOZZA, IN_REVISIONE, APPROVATO, RIFIUTATO).
      * Di default è in BOZZA.
      */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatoContenuto status = StatoContenuto.BOZZA;
+    // @Enumerated(EnumType.STRING)
+    // @Column(nullable = false)
+    // private StatoContenuto status = StatoContenuto.BOZZA;
+
+    /**
+     * Collega il Prodotto alla sua sottomissione per la Curation (Pattern State).
+     */
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "submission_id")
+    private ContentSubmission submission;
 }

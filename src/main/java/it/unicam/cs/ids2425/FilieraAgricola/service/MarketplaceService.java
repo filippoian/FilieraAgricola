@@ -37,9 +37,12 @@ public class MarketplaceService {
                 .orElseThrow(() -> new RuntimeException("Prodotto non trovato con id: " + request.getProdottoId()));
 
         // 3. Controlli di sicurezza e logica
-        // 3a. Controlla che il prodotto sia stato APPROVATO
-        if (prodotto.getStatus() != StatoContenuto.APPROVATO) {
-            throw new IllegalStateException("Impossibile vendere un prodotto che non è 'APPROVATO'. Stato attuale: " + prodotto.getStatus());
+        // 3a. Controlla che il prodotto sia stato APPROVATO tramite Curation
+        if (prodotto.getSubmission() == null ||
+                prodotto.getSubmission().getStatus() != StatoContenuto.APPROVATO) {
+
+            throw new IllegalStateException("Impossibile vendere un prodotto che non è 'APPROVATO'. Stato attuale: " +
+                    (prodotto.getSubmission() != null ? prodotto.getSubmission().getStatus() : "NON SOTTOMESSO"));
         }
 
         // 3b. Controlla che il venditore sia il proprietario del prodotto
@@ -66,13 +69,21 @@ public class MarketplaceService {
      */
     @Transactional(readOnly = true)
     public List<MarketplaceItemResponse> getCatalogo() {
-        // Usa il metodo del repository per filtrare per stato del prodotto
-        List<MarketplaceItem> items = marketplaceItemRepository.findByProdottoStatus(StatoContenuto.APPROVATO);
 
-        // Converte la lista di entità in una lista di DTO
+        // N.B. Il vecchio metodo 'findByProdottoStatus' non è più valido.
+        // Filtriamo in memoria per controllare lo stato della submission.
+        List<MarketplaceItem> items = marketplaceItemRepository.findAll();
+
         return items.stream()
+                .filter(item -> item.getProdotto().getSubmission() != null &&
+                        item.getProdotto().getSubmission().getStatus() == StatoContenuto.APPROVATO)
                 .map(MarketplaceItemResponse::new)
                 .collect(Collectors.toList());
+
+        /* * Per ottimizzare, potremmo aggiungere un metodo al MarketplaceItemRepository:
+         * @Query("SELECT i FROM MarketplaceItem i WHERE i.prodotto.submission.status = :status")
+         * List<MarketplaceItem> findByProdottoSubmissionStatus(@Param("status") StatoContenuto status);
+         * e chiamare quello.
+         */
     }
 }
-

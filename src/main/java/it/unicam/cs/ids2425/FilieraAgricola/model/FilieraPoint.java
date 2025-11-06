@@ -5,15 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
-/**
- * Entità centrale per la mappatura OSM e la tracciabilità, come da specifica.
- * Sostituisce la logica precedentemente implementata in "Azienda".
- */
 @Entity
 @Data
 @NoArgsConstructor
 public class FilieraPoint {
-
+    // ... (campi id, nomePunto, descrizione, indirizzo, lat, lon, tipo, utente)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,8 +22,7 @@ public class FilieraPoint {
 
     private String indirizzo;
 
-    // Latitudine e Longitudine (precedentemente in Azienda)
-    @Column(precision = 10, scale = 7) // Precisione per coordinate geografiche
+    @Column(precision = 10, scale = 7)
     private BigDecimal latitudine;
 
     @Column(precision = 10, scale = 7)
@@ -37,8 +32,15 @@ public class FilieraPoint {
     @Column(nullable = false)
     private TipoFilieraPoint tipo;
 
-    // Riferimento all'utente proprietario (Gestore/Produttore/etc)
     @ManyToOne
     @JoinColumn(name = "utente_id")
     private Utente utente;
+
+    // --- CAMPO AGGIUNTO ---
+    /**
+     * Collega il FilieraPoint alla sua sottomissione per la Curation (Pattern State).
+     */
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "submission_id")
+    private ContentSubmission submission;
 }
