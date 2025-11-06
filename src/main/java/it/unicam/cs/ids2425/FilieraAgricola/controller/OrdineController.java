@@ -1,5 +1,6 @@
 package it.unicam.cs.ids2425.FilieraAgricola.controller;
 
+import it.unicam.cs.ids2425.FilieraAgricola.dto.request.CarrelloCheckoutDTO; // Import
 import it.unicam.cs.ids2425.FilieraAgricola.dto.request.OrdineRequest;
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.OrdineResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.service.OrdineService;
@@ -17,30 +18,31 @@ public class OrdineController {
 
     private final OrdineService ordineService;
 
-    @PreAuthorize("hasRole('ACQUIRENTE')")
-    @PostMapping
-    public ResponseEntity<OrdineResponse> creaOrdine(@RequestBody OrdineRequest request) {
-        return ResponseEntity.ok(ordineService.creaOrdine(request));
+    // --- ENDPOINT AGGIORNATO (come da specifica) ---
+    /**
+     * Crea un nuovo ordine basato sul payload del carrello (Checkout).
+     */
+    @PostMapping("/checkout/{utenteId}")
+    @PreAuthorize("hasRole('ACQUIRENTE') and #utenteId == authentication.principal.id")
+    public ResponseEntity<OrdineResponse> creaOrdine(
+            @PathVariable Long utenteId,
+            @RequestBody CarrelloCheckoutDTO request) {
+
+        return ResponseEntity.ok(ordineService.creaOrdineDaCheckout(utenteId, request));
     }
 
-    @PreAuthorize("hasRole('ACQUIRENTE')")
     @GetMapping("/utente/{id}")
+    @PreAuthorize("hasRole('ACQUIRENTE') and #id == authentication.principal.id")
     public ResponseEntity<List<OrdineResponse>> getOrdiniByUtente(@PathVariable Long id) {
         return ResponseEntity.ok(ordineService.getOrdiniByUtente(id));
     }
 
-    @PreAuthorize("hasRole('GESTORE') or hasRole('DISTRIBUTORE')")
     @PostMapping("/{id}/stato")
+    @PreAuthorize("hasRole('GESTORE') or hasAnyRole('PRODUTTORE', 'TRASFORMATORE', 'DISTRIBUTORE')")
     public ResponseEntity<String> aggiornaStatoOrdine(
             @PathVariable Long id,
             @RequestParam String stato) {
         ordineService.aggiornaStato(id, stato);
         return ResponseEntity.ok("Stato aggiornato con successo");
-    }
-
-    @PostMapping("/dal-carrello/{utenteId}")
-    @PreAuthorize("#utenteId == authentication.principal.id or hasRole('GESTORE')")
-    public ResponseEntity<OrdineResponse> creaOrdineDalCarrello(@PathVariable Long utenteId) {
-        return ResponseEntity.ok(ordineService.creaOrdineDalCarrello(utenteId));
     }
 }

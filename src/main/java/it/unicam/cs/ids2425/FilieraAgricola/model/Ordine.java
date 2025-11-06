@@ -14,7 +14,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "ordini") // Specifichiamo il nome della tabella per chiarezza
+@Table(name = "ordini")
 public class Ordine {
 
     @Id
@@ -30,14 +30,12 @@ public class Ordine {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatoOrdine stato = StatoOrdine.In_elaborazione;
+    private StatoOrdine stato = StatoOrdine.IN_ELABORAZIONE; // Corretto Enum
 
     @Column(precision = 10, scale = 2)
     private BigDecimal totale;
 
-    // Relazione Uno-a-Molti con le righe dell'ordine
-    // CascadeType.ALL: Se salvo un Ordine, salva anche le sue linee.
-    // orphanRemoval=true: Se rimuovo una linea dalla lista, viene eliminata dal DB.
+    // Relazione Uno-a-Molti con OrderLine (corretto)
     @OneToMany(mappedBy = "ordine", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderLine> linee = new ArrayList<>();
 
@@ -45,5 +43,10 @@ public class Ordine {
     public void addLinea(OrderLine linea) {
         linee.add(linea);
         linea.setOrdine(this);
+    }
+
+    // Costruttore per il servizio
+    public Ordine(Utente acquirente) {
+        this.acquirente = acquirente;
     }
 }

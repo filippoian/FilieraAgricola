@@ -1,16 +1,15 @@
 package it.unicam.cs.ids2425.FilieraAgricola.service;
 
-import it.unicam.cs.ids2425.FilieraAgricola.dto.request.OrdineRequest;
+import it.unicam.cs.ids2425.FilieraAgricola.dto.request.CarrelloCheckoutDTO; // DTO Nuovo (vedi sotto)
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.OrdineResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.model.*;
-import it.unicam.cs.ids2425.FilieraAgricola.repository.CarrelloRepository;
-import it.unicam.cs.ids2425.FilieraAgricola.repository.OrdineRepository;
-import it.unicam.cs.ids2425.FilieraAgricola.repository.UtenteRepository;
+import it.unicam.cs.ids2425.FilieraAgricola.repository.*;
+import it.unicam.cs.ids2425.FilieraAgricola.service.pricing.PricingStrategyFactory; // Import Strategy
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.math.BigDecimal; // Import
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,57 +19,81 @@ public class OrdineService {
 
     private final OrdineRepository ordineRepository;
     private final UtenteRepository utenteRepository;
-    private final CarrelloRepository carrelloRepository;
 
-    public OrdineResponse creaOrdine(OrdineRequest request) {
+    // --- Repository e Factory Aggiunti ---
+    private final MarketplaceItemRepository marketplaceItemRepository;
+    private final PacchettoRepository pacchettoRepository;
+    private final PricingStrategyFactory pricingStrategyFactory;
 
-        Utente acquirente = utenteRepository.findById(request.getAcquirenteId()).orElseThrow(() -> new RuntimeException("Acquirente non trovato"));
-
-        Ordine ordine = new Ordine();
-        ordine.setAcquirente(acquirente);
-        return new OrdineResponse(ordineRepository.save(ordine));
-
-    }
-
+    /**
+     * Crea un ordine basandosi su un DTO di checkout (il carrello).
+     * Implementa il Pattern Strategy per il calcolo del prezzo.
+     */
     @Transactional
-    public OrdineResponse creaOrdineDalCarrello(Long utenteId) {
-        // Recupera l'utente e il suo carrello
+    public OrdineResponse creaOrdineDaCheckout(Long utenteId, CarrelloCheckoutDTO request) {
         Utente acquirente = utenteRepository.findById(utenteId)
                 .orElseThrow(() -> new RuntimeException("Acquirente non trovato con id: " + utenteId));
 
-        Carrello carrello = carrelloRepository.findByUtenteId(utenteId)
-                .orElseThrow(() -> new RuntimeException("Carrello non trovato per l'utente con id: " + utenteId));
+        Ordine nuovoOrdine = new Ordine();
+        nuovoOrdine.setAcquirente(acquirente);
 
-        if (carrello.getArticoli().isEmpty()) {
-            throw new IllegalStateException("Impossibile creare un ordine da un carrello vuoto.");
-        }
+        BigDecimal totaleOrdine = BigDecimal.ZERO;
 
-        // Crea un nuovo ordine
-        Ordine nuovoOrdine = new Ordine(acquirente);
+        // Itera sugli ARTICOLI SINGOLI nel carrello
+        for (CarrelloCheckoutDTO.Item item : request.getItems()) {
+            MarketplaceItem marketplaceItem = marketplaceItemRepository.findById(item.getId())
+                    .orElseThrow(() -> new RuntimeException("Articolo non trovato: " + item.getId()));
 
-        // Copia gli articoli dal carrello al nuovo ordine
-        List<ArticoloOrdine> articoliOrdine = new ArrayList<>();
-        for (ArticoloCarrello articoloCarrello : carrello.getArticoli()) {
-            ArticoloOrdine articoloOrdine = new ArticoloOrdine(
+            // "Congela" il prezzo al momento dell'acquisto
+            BigDecimal prezzoDiAcquisto = BigDecimal.valueOf(marketplaceItem.getPrezzoUnitario());
+
+            OrderLine linea = new OrderLine(
                     nuovoOrdine,
-                    articoloCarrello.getProdotto(),
-                    articoloCarrello.getQuantita()
+                    marketplaceItem, // Articolo
+                    null,            // Pacchetto (null)
+                    item.getQuantita(),
+                    prezzoDiAcquisto
             );
-            articoliOrdine.add(articoloOrdine);
-        }
-        nuovoOrdine.setArticoli(articoliOrdine);
 
-        // Salva il nuovo ordine (e i suoi articoli, grazie al cascade)
+            // Delega il calcolo al Pattern Strategy
+            BigDecimal subtotale = pricingStrategyFactory.getStrategy(linea).calculatePrice(linea);
+            totaleOrdine = totaleOrdine.add(subtotale);
+
+            nuovoOrdine.getLinee().add(linea);
+        }
+
+        // Itera sui PACCHETTI nel carrello
+        for (CarrelloCheckoutDTO.Item item : request.getPacchetti()) {
+            Pacchetto pacchetto = pacchettoRepository.findById(item.getId())
+                    .orElseThrow(() -> new RuntimeException("Pacchetto non trovato: " + item.getId()));
+
+            // "Congela" il prezzo al momento dell'acquisto
+            BigDecimal prezzoDiAcquisto = pacchetto.getPrezzo_totale();
+
+            OrderLine linea = new OrderLine(
+                    nuovoOrdine,
+                    null,          // Articolo (null)
+                    pacchetto,     // Pacchetto
+                    item.getQuantita(),
+                    prezzoDiAcquisto
+            );
+
+            // Delega il calcolo al Pattern Strategy
+            BigDecimal subtotale = pricingStrategyFactory.getStrategy(linea).calculatePrice(linea);
+            totaleOrdine = totaleOrdine.add(subtotale);
+
+            nuovoOrdine.getLinee().add(linea);
+        }
+
+        // Salva il totale calcolato
+        nuovoOrdine.setTotale(totaleOrdine);
+
+        // Salva l'ordine (e le OrderLine grazie a CascadeType.ALL)
         Ordine ordineSalvato = ordineRepository.save(nuovoOrdine);
 
-        // Svuota il carrello
-        carrello.getArticoli().clear();
-        carrelloRepository.save(carrello);
-
-        // La OrdineResponse andrebbe arricchita per includere gli articoli,
-        // ma per ora manteniamo la compatibilità.
         return new OrdineResponse(ordineSalvato);
     }
+
 
     public List<OrdineResponse> getOrdiniByUtente(Long id) {
         return ordineRepository.findByAcquirenteId(id)
