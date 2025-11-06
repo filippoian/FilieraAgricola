@@ -31,4 +31,7 @@ public class Evento {
     @ManyToOne
     @JoinColumn(name = "organizzatore_id")
     private Utente organizzatore;
+
+    @Column(nullable = false)
+    private boolean approvato = false;
 }

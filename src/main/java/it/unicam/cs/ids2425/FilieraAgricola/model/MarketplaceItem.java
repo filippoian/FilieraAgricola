@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProdottoPacchetto {
+public class MarketplaceItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,8 +20,16 @@ public class ProdottoPacchetto {
     private Prodotto prodotto;
 
     @ManyToOne
-    @JoinColumn(name = "pacchetto_id", nullable = false)
-    private Pacchetto pacchetto;
+    @JoinColumn(name = "seller_user_id", nullable = false)
+    private Utente venditore;
 
-    private Integer quantita = 1;
+    @Column(nullable = false)
+    private double prezzoUnitario;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UnitaDiMisura unitaDiMisura;
+
+    @Column(nullable = false)
+    private int stockDisponibile;
 }

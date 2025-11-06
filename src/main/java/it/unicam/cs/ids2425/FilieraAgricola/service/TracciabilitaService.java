@@ -21,18 +21,18 @@ public class TracciabilitaService {
 
     public TracciabilitaResponse aggiungiFase(TracciabilitaRequest request) {
         Prodotto prodotto = prodottoRepository.findById(request.getProdottoId())
-                .orElseThrow(() -> new RuntimeException("Prodotto non trovato con id: " + request.getProdottoId()));
+                .orElseThrow(() -> new RuntimeException("Prodotto non trovato"));
 
-        Tracciabilita t = new Tracciabilita();
-        t.setProdotto(prodotto);
-        t.setFase(request.getFase());
-        t.setDescrizione(request.getDescrizione());
-        t.setData(request.getData());
+        Tracciabilita tracciabilita = new Tracciabilita();
+        tracciabilita.setProdotto(prodotto);
+        tracciabilita.setFase(request.getFase());
+        tracciabilita.setDescrizione(request.getDescrizione());
+        tracciabilita.setData(request.getData());
 
-        return new TracciabilitaResponse(tracciabilitaRepository.save(t));
+        return new TracciabilitaResponse(tracciabilitaRepository.save(tracciabilita));
     }
 
-    public List<TracciabilitaResponse> getFasiByProdotto(Long prodottoId) {
+    public List<TracciabilitaResponse> getFasiPerProdotto(Long prodottoId) {
         return tracciabilitaRepository.findByProdottoId(prodottoId)
                 .stream()
                 .map(TracciabilitaResponse::new)

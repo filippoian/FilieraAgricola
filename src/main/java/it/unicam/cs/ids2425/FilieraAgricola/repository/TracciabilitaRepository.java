@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface TracciabilitaRepository extends JpaRepository<Tracciabilita, Long> {
     List<Tracciabilita> findByProdottoId(Long prodottoId);
+    List<Tracciabilita> findByProdottoIdOrderByDataAsc(Long prodottoId);
 }

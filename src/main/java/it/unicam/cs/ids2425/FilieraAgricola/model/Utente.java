@@ -5,7 +5,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
+@Table(name = "utenti") // Meglio specificare il nome della tabella
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,7 +28,15 @@ public class Utente {
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RuoloUtente ruolo;
+    // --- CAMPO RIMOSSO ---
+    // @Enumerated(EnumType.STRING)
+    // @Column(nullable = false)
+    // private RuoloUtente ruolo;
+
+    // --- CAMPO AGGIUNTO ---
+    @ManyToMany(fetch = FetchType.EAGER) // EAGER è utile per la sicurezza
+    @JoinTable(name = "utente_roles",
+            joinColumns = @JoinColumn(name = "utente_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
 }

@@ -5,6 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -22,6 +26,13 @@ public class Pacchetto {
     private String descrizione;
 
     @ManyToOne
-    @JoinColumn(name = "distributore_id")
+    @JoinColumn(name = "distributore_id", nullable = false)
     private Utente distributore;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal prezzo_totale;
+
+    // Relazione Uno-a-Molti con la tabella di join
+    @OneToMany(mappedBy = "pacchetto", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MarketplaceItemPacchetto> items = new HashSet<>();
 }

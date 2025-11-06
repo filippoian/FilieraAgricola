@@ -4,7 +4,7 @@ import it.unicam.cs.ids2425.FilieraAgricola.dto.request.TracciabilitaRequest;
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.TracciabilitaResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.service.TracciabilitaService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,15 +14,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TracciabilitaController {
 
-    private final TracciabilitaService tracciabilitaService;
+    private final TracciabilitaService service;
 
+
+    @PreAuthorize("hasAnyARole('PRODUTTORE', 'TRASFORMATORE', 'DISTRIBUTORE')")
     @PostMapping
-    public ResponseEntity<TracciabilitaResponse> aggiungiFase(@RequestBody TracciabilitaRequest request) {
-        return ResponseEntity.ok(tracciabilitaService.aggiungiFase(request));
+    public TracciabilitaResponse aggiungiFase(@RequestBody TracciabilitaRequest request) {
+        return service.aggiungiFase(request);
     }
 
-    @GetMapping("/prodotto/{id}")
-    public ResponseEntity<List<TracciabilitaResponse>> getFasiByProdotto(@PathVariable Long id) {
-        return ResponseEntity.ok(tracciabilitaService.getFasiByProdotto(id));
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/prodotto/{prodottoId}")
+    public List<TracciabilitaResponse> getFasiPerProdotto(@PathVariable Long prodottoId) {
+        return service.getFasiPerProdotto(prodottoId);
     }
 }

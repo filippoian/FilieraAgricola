@@ -12,6 +12,7 @@ public class AziendaResponse {
     private String indirizzo;
     private BigDecimal latitudine;
     private BigDecimal longitudine;
+    private String ruolo;
 
     public AziendaResponse(Azienda azienda) {
         this.id = azienda.getId();
@@ -19,5 +20,6 @@ public class AziendaResponse {
         this.indirizzo = azienda.getIndirizzo();
         this.latitudine = azienda.getLatitudine();
         this.longitudine = azienda.getLongitudine();
+        this.ruolo = azienda.getUtente() != null ? azienda.getUtente().getRuolo().name() : null;
     }
 }

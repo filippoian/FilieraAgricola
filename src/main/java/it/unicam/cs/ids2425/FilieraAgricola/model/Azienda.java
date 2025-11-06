@@ -28,4 +28,7 @@ public class Azienda {
     @ManyToOne
     @JoinColumn(name = "utente_id")
     private Utente utente;
+
+    @Column(nullable = false)
+    private boolean approvato = false;
 }
