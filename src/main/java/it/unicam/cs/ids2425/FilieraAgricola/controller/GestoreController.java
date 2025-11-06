@@ -1,6 +1,7 @@
 package it.unicam.cs.ids2425.FilieraAgricola.controller;
 
 import it.unicam.cs.ids2425.FilieraAgricola.dto.request.AccreditaRequest;
+import it.unicam.cs.ids2425.FilieraAgricola.dto.request.AccreditaProduttoreRequest; // Import
 import it.unicam.cs.ids2425.FilieraAgricola.dto.response.MessageResponse;
 import it.unicam.cs.ids2425.FilieraAgricola.service.GestoreService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,18 +17,31 @@ public class GestoreController {
     GestoreService gestoreService;
 
     /**
-     * Endpoint per accreditare un utente con un nuovo ruolo professionale.
-     * Accessibile solo da utenti con autorità GESTORE.
+     * Endpoint per accreditare un utente con un ruolo "base" (es. CURATORE, GESTORE)
+     * che non richiede un profilo attore complesso.
      */
-    @PostMapping("/utenti/{userId}/accredita")
-    @PreAuthorize("hasAuthority('GESTORE')")
-    public ResponseEntity<?> accreditaUtente(@PathVariable Long userId, @RequestBody AccreditaRequest request) {
-
+    @PostMapping("/utenti/{userId}/accredita-ruolo")
+    @PreAuthorize("hasAuthority('ROLE_GESTORE')") // Assicurati che i ruoli Spring Security inizino con ROLE_
+    public ResponseEntity<?> accreditaRuoloBase(@PathVariable Long userId, @RequestBody AccreditaRequest request) {
         try {
-            gestoreService.accreditaUtente(userId, request.getRuolo());
+            gestoreService.accreditaRuoloBase(userId, request.getRuolo());
             return ResponseEntity.ok(new MessageResponse("Ruolo " + request.getRuolo() + " aggiunto con successo all'utente " + userId));
         } catch (RuntimeException e) {
-            // Se l'utente o il ruolo non esistono
+            return ResponseEntity.badRequest().body(new MessageResponse("Errore: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Endpoint per l'accredito completo di un PRODUTTORE,
+     * che crea il profilo e il filiera point.
+     */
+    @PostMapping("/utenti/{userId}/accredita-produttore")
+    @PreAuthorize("hasAuthority('ROLE_GESTORE')")
+    public ResponseEntity<?> accreditaProduttore(@PathVariable Long userId, @RequestBody AccreditaProduttoreRequest request) {
+        try {
+            gestoreService.accreditaProduttore(userId, request);
+            return ResponseEntity.ok(new MessageResponse("Utente " + userId + " accreditato come PRODUTTORE con successo."));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Errore: " + e.getMessage()));
         }
     }

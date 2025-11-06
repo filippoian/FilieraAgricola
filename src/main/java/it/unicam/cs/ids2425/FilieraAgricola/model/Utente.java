@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "utenti") // Meglio specificare il nome della tabella
+@Table(name = "utenti")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,24 +19,26 @@ public class Utente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
-    private String nome;
+    // --- CAMPO RIMOSSO ---
+    // 'nome' è stato spostato in UserProfile
+    // @Column(nullable = false, length = 100)
+    // private String nome;
 
     @Column(nullable = false, unique = true, length = 100)
-    private String email;
+    private String email; // Questo è l'username
 
     @Column(nullable = false)
     private String password;
 
-    // --- CAMPO RIMOSSO ---
-    // @Enumerated(EnumType.STRING)
-    // @Column(nullable = false)
-    // private RuoloUtente ruolo;
-
-    // --- CAMPO AGGIUNTO ---
-    @ManyToMany(fetch = FetchType.EAGER) // EAGER è utile per la sicurezza
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "utente_roles",
             joinColumns = @JoinColumn(name = "utente_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    // --- CAMPO AGGIUNTO ---
+    // Relazione 1-a-1 con il profilo anagrafico
+    // 'mappedBy' indica che l'entità UserProfile gestisce la colonna di join.
+    @OneToOne(mappedBy = "utente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserProfile userProfile;
 }
