@@ -12,7 +12,7 @@ public class AziendaResponse {
     private String indirizzo;
     private BigDecimal latitudine;
     private BigDecimal longitudine;
-    private String ruolo;
+    private String ruolo; // Mostra il primo ruolo significativo
 
     public AziendaResponse(Azienda azienda) {
         this.id = azienda.getId();
@@ -20,6 +20,14 @@ public class AziendaResponse {
         this.indirizzo = azienda.getIndirizzo();
         this.latitudine = azienda.getLatitudine();
         this.longitudine = azienda.getLongitudine();
-        this.ruolo = azienda.getUtente() != null ? azienda.getUtente().getRuolo().name() : null;
+
+        // CORREZIONE: Gestisce Set<Role> invece di un singolo ruolo
+        if (azienda.getUtente() != null && azienda.getUtente().getRoles() != null && !azienda.getUtente().getRoles().isEmpty()) {
+            // Prende il primo ruolo come rappresentativo
+            this.ruolo = azienda.getUtente().getRoles().stream()
+                    .findFirst()
+                    .map(role -> role.getName().name())
+                    .orElse("N/A");
+        }
     }
 }

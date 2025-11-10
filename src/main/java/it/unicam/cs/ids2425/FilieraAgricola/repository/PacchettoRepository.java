@@ -6,6 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface PacchettoRepository extends JpaRepository<Pacchetto, Long> {
-    List<Pacchetto> findByApprovatoFalse();
     List<Pacchetto> findByDistributoreId(Long distributoreId);
 }

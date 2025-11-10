@@ -1,7 +1,7 @@
-// ... (import)
+package it.unicam.cs.ids2425.FilieraAgricola.dto.response;
+
 import it.unicam.cs.ids2425.FilieraAgricola.model.Utente;
 import lombok.Data;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +19,7 @@ public class LoginResponse {
         this.id = utente.getId();
         this.email = utente.getEmail();
 
-        // Estrae i dati anagrafici dal profilo collegato 
+        // Estrae i dati anagrafici dal profilo collegato
         if (utente.getUserProfile() != null) {
             this.nome = utente.getUserProfile().getNome();
             this.cognome = utente.getUserProfile().getCognome();

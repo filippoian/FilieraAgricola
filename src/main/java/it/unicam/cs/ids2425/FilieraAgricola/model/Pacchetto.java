@@ -32,7 +32,10 @@ public class Pacchetto {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal prezzo_totale;
 
-    // Relazione Uno-a-Molti con la tabella di join
     @OneToMany(mappedBy = "pacchetto", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MarketplaceItemPacchetto> items = new HashSet<>();
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "submission_id")
+    private ContentSubmission submission;
 }

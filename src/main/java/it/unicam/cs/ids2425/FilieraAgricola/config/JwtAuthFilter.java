@@ -1,5 +1,6 @@
 package it.unicam.cs.ids2425.FilieraAgricola.config;
 
+import it.unicam.cs.ids2425.FilieraAgricola.security.JwtUtils; // Import corretto
 import it.unicam.cs.ids2425.FilieraAgricola.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -33,12 +34,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            String username = jwtUtils.getUsernameFromToken(token);
+            // CORREZIONE: da getUsernameFromToken a getEmailFromToken
+            String username = jwtUtils.getEmailFromToken(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (jwtUtils.isTokenValid(token)) {
+                // CORREZIONE: da isTokenValid a validateToken
+                if (jwtUtils.validateToken(token)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()
                     );
@@ -51,4 +54,3 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

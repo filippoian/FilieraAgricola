@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -23,20 +22,18 @@ public class PacchettoService {
 
     private final PacchettoRepository pacchettoRepository;
     private final UtenteRepository utenteRepository;
-
-    // --- Repository Corretti ---
     private final MarketplaceItemRepository marketplaceItemRepository;
     private final MarketplaceItemPacchettoRepository marketplaceItemPacchettoRepository;
-
-    // --- Repository Aggiunto per Curation ---
     private final ContentSubmissionRepository submissionRepository;
+
+    // Servizio Curation iniettato
+    private final CurationService curationService;
 
     @Transactional
     public PacchettoResponse creaPacchetto(PacchettoRequest request) {
         Utente distributore = utenteRepository.findById(request.getDistributoreId())
                 .orElseThrow(() -> new RuntimeException("Distributore non trovato"));
 
-        // Controllo Sicurezza: Solo il distributore stesso o un admin
         checkOwnershipOrAdmin(distributore.getId(), "creare pacchetti");
 
         Pacchetto pacchetto = new Pacchetto();
@@ -45,24 +42,19 @@ public class PacchettoService {
         pacchetto.setDistributore(distributore);
         pacchetto.setPrezzo_totale(request.getPrezzoTotale());
 
-        // Salva il pacchetto per ottenere l'ID
         Pacchetto savedPacchetto = pacchettoRepository.save(pacchetto);
 
-        // Crea la sottomissione associata (in stato BOZZA di default)
         ContentSubmission submission = new ContentSubmission(savedPacchetto.getId(), "PACCHETTO");
         ContentSubmission savedSubmission = submissionRepository.save(submission);
 
-        // Collega la sottomissione al pacchetto
-        savedPacchetto.setSubmission(savedSubmission);
+        savedPacchetto.setSubmission(savedSubmission); // Campo 'submission' aggiunto al modello
         pacchettoRepository.save(savedPacchetto);
 
 
-        // Collega i MarketplaceItems
         for (Long itemId : request.getMarketplaceItemIds()) {
             MarketplaceItem item = marketplaceItemRepository.findById(itemId)
                     .orElseThrow(() -> new RuntimeException("MarketplaceItem non trovato con id: " + itemId));
 
-            // Controllo Curation: l'item deve essere approvato
             if (item.getProdotto().getSubmission() == null ||
                     item.getProdotto().getSubmission().getStatus() != StatoContenuto.APPROVATO) {
                 throw new IllegalStateException("Impossibile aggiungere al pacchetto l'item non approvato: " + item.getId());
@@ -74,15 +66,12 @@ public class PacchettoService {
             link.setQuantita(1);
 
             marketplaceItemPacchettoRepository.save(link);
-            savedPacchetto.getItems().add(link); // Assicura che la collection sia aggiornata
+            savedPacchetto.getItems().add(link);
         }
 
         return new PacchettoResponse(savedPacchetto);
     }
 
-    /**
-     * Ritorna tutti i pacchetti visibili al pubblico (APPROVATI).
-     */
     public List<PacchettoResponse> getAllPacchetti() {
         return pacchettoRepository.findAll()
                 .stream()
@@ -97,23 +86,19 @@ public class PacchettoService {
         Pacchetto pacchetto = pacchettoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pacchetto non trovato"));
 
-        // Controllo permessi (solo proprietario/admin)
         checkOwnershipOrAdmin(pacchetto.getDistributore().getId(), "aggiornare");
 
         pacchetto.setNome(request.getNome());
         pacchetto.setDescrizione(request.getDescrizione());
         pacchetto.setPrezzo_totale(request.getPrezzoTotale());
 
-        // Gestione aggiornamento items: rimuovi i vecchi, aggiungi i nuovi
-        // (orphanRemoval=true su Pacchetto.items si occuperà di pulire il DB)
         pacchetto.getItems().clear();
-        marketplaceItemPacchettoRepository.deleteAllByPacchettoId(id); // Pulizia esplicita
+        marketplaceItemPacchettoRepository.deleteAllByPacchettoId(id); // Metodo aggiunto al repository
 
         for (Long itemId : request.getMarketplaceItemIds()) {
             MarketplaceItem item = marketplaceItemRepository.findById(itemId)
                     .orElseThrow(() -> new RuntimeException("MarketplaceItem non trovato con id: " + itemId));
 
-            // Controllo Curation
             if (item.getProdotto().getSubmission() == null ||
                     item.getProdotto().getSubmission().getStatus() != StatoContenuto.APPROVATO) {
                 throw new IllegalStateException("Impossibile aggiungere al pacchetto l'item non approvato: " + item.getId());
@@ -127,7 +112,6 @@ public class PacchettoService {
             pacchetto.getItems().add(link);
         }
 
-        // Se aggiornato, lo stato Curation deve tornare a BOZZA
         ContentSubmission submission = pacchetto.getSubmission();
         if (submission != null && submission.getStatus() != StatoContenuto.BOZZA) {
             submission.setStatus(StatoContenuto.BOZZA);
@@ -144,14 +128,12 @@ public class PacchettoService {
         Pacchetto pacchetto = pacchettoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pacchetto non trovato"));
 
-        // Controllo permessi
         checkOwnershipOrAdmin(pacchetto.getDistributore().getId(), "eliminare");
 
         pacchettoRepository.deleteById(id);
     }
 
     public List<PacchettoResponse> getByDistributore(Long distributoreId) {
-        // Controllo permessi
         checkOwnershipOrAdmin(distributoreId, "visualizzare i pacchetti");
 
         return pacchettoRepository.findByDistributoreId(distributoreId)
@@ -160,11 +142,34 @@ public class PacchettoService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Metodo helper per controllare i permessi.
-     * Verifica se l'utente autenticato è il proprietario (tramite ID)
-     * o ha un ruolo di admin (CURATORE, GESTORE).
-     */
+
+    @Transactional(readOnly = true)
+    public List<PacchettoResponse> getPacchettiDaApprovare() {
+        List<Long> idsPacchetti = submissionRepository.findByStatus(StatoContenuto.IN_REVISIONE)
+                .stream()
+                .filter(s -> s.getSubmittableEntityType().equals("PACCHETTO"))
+                .map(ContentSubmission::getSubmittableEntityId)
+                .collect(Collectors.toList());
+
+        return pacchettoRepository.findAllById(idsPacchetti)
+                .stream()
+                .map(PacchettoResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void approvaPacchetto(Long id) {
+        Pacchetto pacchetto = pacchettoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pacchetto non trovato"));
+
+        ContentSubmission submission = pacchetto.getSubmission();
+        if (submission == null) {
+            throw new RuntimeException("Pacchetto non sottomesso per l'approvazione");
+        }
+        curationService.approvaContenuto(submission.getId());
+    }
+
+
     private void checkOwnershipOrAdmin(Long ownerId, String azione) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -176,10 +181,9 @@ public class PacchettoService {
                 .anyMatch(role -> role.equals("ROLE_CURATORE") || role.equals("ROLE_GESTORE"));
 
         if (isAdmin) {
-            return; // Gli admin possono procedere
+            return;
         }
 
-        // Se non è admin, controlla la proprietà
         String userEmail = authentication.getName();
         Optional<Utente> utenteAttuale = utenteRepository.findByEmail(userEmail);
 

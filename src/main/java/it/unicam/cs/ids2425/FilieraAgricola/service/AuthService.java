@@ -8,7 +8,6 @@ import it.unicam.cs.ids2425.FilieraAgricola.model.ERole;
 import it.unicam.cs.ids2425.FilieraAgricola.model.Role;
 import it.unicam.cs.ids2425.FilieraAgricola.model.UserProfile; // Import
 import it.unicam.cs.ids2425.FilieraAgricola.model.Utente;
-import it.unicam.cs.ids2425.FilieraAgricola.repository.RoleRepository;
 import it.unicam.cs.ids2425.FilieraAgricola.repository.UserProfileRepository; // Import
 import it.unicam.cs.ids2425.FilieraAgricola.repository.UtenteRepository;
 import it.unicam.cs.ids2425.FilieraAgricola.security.JwtUtils;
@@ -19,7 +18,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // Import
+import org.springframework.transaction.annotation.Transactional;
+import it.unicam.cs.ids2425.FilieraAgricola.repository.RoleRepository;
 
 import java.util.HashSet;
 import java.util.List;

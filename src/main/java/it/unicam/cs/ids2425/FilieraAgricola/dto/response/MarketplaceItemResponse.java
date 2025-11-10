@@ -4,10 +4,6 @@ import it.unicam.cs.ids2425.FilieraAgricola.model.MarketplaceItem;
 import it.unicam.cs.ids2425.FilieraAgricola.model.UnitaDiMisura;
 import lombok.Data;
 
-/**
- * DTO per la risposta di un articolo sul marketplace.
- * Include dettagli sul prodotto e sul venditore.
- */
 @Data
 public class MarketplaceItemResponse {
     private Long itemId;
@@ -49,7 +45,12 @@ public class MarketplaceItemResponse {
 
         VenditoreInItemResponse(it.unicam.cs.ids2425.FilieraAgricola.model.Utente venditore) {
             this.venditoreId = venditore.getId();
-            this.nomeVenditore = venditore.getNome();
+
+            if (venditore.getUserProfile() != null) {
+                this.nomeVenditore = venditore.getUserProfile().getNome() + " " + venditore.getUserProfile().getCognome();
+            } else {
+                this.nomeVenditore = venditore.getEmail(); // Fallback se il profilo è nullo
+            }
         }
     }
 }

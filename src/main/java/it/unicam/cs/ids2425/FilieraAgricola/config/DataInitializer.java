@@ -2,10 +2,10 @@ package it.unicam.cs.ids2425.FilieraAgricola.config;
 
 import it.unicam.cs.ids2425.FilieraAgricola.model.ERole;
 import it.unicam.cs.ids2425.FilieraAgricola.model.Role;
-import it.unicam.cs.ids2425.FilieraAgricola.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import it.unicam.cs.ids2425.FilieraAgricola.repository.RoleRepository;
 
 /**
  * Questo componente viene eseguito automaticamente all'avvio dell'applicazione.
@@ -29,8 +29,7 @@ public class DataInitializer implements CommandLineRunner {
             if (roleRepository.findByName(roleName).isEmpty()) {
 
                 // Se non esiste, lo creiamo e salviamo
-                Role role = new Role();
-                role.setName(roleName);
+                Role role = new Role(roleName);
                 roleRepository.save(role);
 
                 System.out.println("Creato ruolo di default: " + roleName);

@@ -9,7 +9,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import java.util.Set; // Importato Set
+import java.util.stream.Collectors; // Importato Collectors
 
 @Service
 @RequiredArgsConstructor
@@ -22,13 +23,16 @@ public class CustomUserDetailsService implements UserDetailsService {
         Utente utente = utenteRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Nessun utente trovato con l'email: " + email));
 
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + utente.getRuolo().name());
+        // Converte il Set<Role> in un Set<SimpleGrantedAuthority>
+        Set<SimpleGrantedAuthority> authorities = utente.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .collect(Collectors.toSet());
 
         return new CustomUserDetails(
                 utente.getId(),
                 utente.getEmail(),
                 utente.getPassword(),
-                Collections.singleton(authority)
+                authorities // Passa il Set di autorità
         );
     }
 }

@@ -29,13 +29,14 @@ public class EventoService {
     private final UtenteRepository utenteRepository;
     private final ContentSubmissionRepository submissionRepository;
 
+    // Servizio Curation iniettato per gestire l'approvazione
+    private final CurationService curationService;
+
     @Transactional
     public EventoResponse creaEvento(EventoRequest request) {
         Utente organizzatore = utenteRepository.findById(request.getOrganizzatoreId())
                 .orElseThrow(() -> new RuntimeException("Utente non trovato con id: " + request.getOrganizzatoreId()));
 
-        // Controllo Sicurezza: Solo l'utente stesso può creare un evento a suo nome
-        // (o un Gestore/Curatore)
         checkOwnershipOrAdmin(organizzatore.getId(), "creare eventi");
 
         Evento evento = new Evento();
@@ -47,6 +48,7 @@ public class EventoService {
 
         Evento savedEvento = eventoRepository.save(evento);
 
+        // Crea la sottomissione in stato BOZZA
         ContentSubmission submission = new ContentSubmission(savedEvento.getId(), "EVENTO");
         ContentSubmission savedSubmission = submissionRepository.save(submission);
 
@@ -73,7 +75,6 @@ public class EventoService {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Evento non trovato"));
 
-        // Controllo Sicurezza: Solo proprietario o admin
         checkOwnershipOrAdmin(evento.getOrganizzatore().getId(), "aggiornare");
 
         evento.setNome(request.getNome());
@@ -81,13 +82,11 @@ public class EventoService {
         evento.setData(request.getData());
         evento.setLuogo(request.getLuogo());
 
-        // Se l'evento viene modificato, la sua sottomissione torna in BOZZA
-        // per una nuova approvazione
         ContentSubmission submission = evento.getSubmission();
         if (submission != null && submission.getStatus() != StatoContenuto.BOZZA) {
             submission.setStatus(StatoContenuto.BOZZA);
             submission.setFeedbackCuratore("Modificato, richiede nuova approvazione.");
-            submission.updateState(); // Aggiorna l'oggetto di stato transiente
+            submission.updateState();
             submissionRepository.save(submission);
         }
 
@@ -99,28 +98,46 @@ public class EventoService {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Evento non trovato"));
 
-        // Controllo Sicurezza: Solo proprietario o admin
         checkOwnershipOrAdmin(evento.getOrganizzatore().getId(), "eliminare");
 
-        // L'entità Evento ha 'cascade = CascadeType.ALL, orphanRemoval = true'
-        // sulla submission, quindi eliminando l'evento si elimina
-        // automaticamente anche la submission associata.
         eventoRepository.deleteById(id);
     }
 
-    /**
-     * Metodo pubblico per visualizzare solo eventi approvati.
-     * (Alias di getAllEventi, che ora fa già questo filtro)
-     */
     public List<EventoResponse> getEventiApprovati() {
         return this.getAllEventi();
     }
 
-    /**
-     * Metodo helper per controllare i permessi.
-     * Verifica se l'utente autenticato è il proprietario (tramite ID)
-     * o ha un ruolo di admin (CURATORE, GESTORE).
-     */
+
+    @Transactional(readOnly = true)
+    public List<EventoResponse> getEventiDaApprovare() {
+        // Trova le submission IN_REVISIONE di tipo EVENTO
+        List<Long> idsEventi = submissionRepository.findByStatus(StatoContenuto.IN_REVISIONE)
+                .stream()
+                .filter(s -> s.getSubmittableEntityType().equals("EVENTO"))
+                .map(ContentSubmission::getSubmittableEntityId)
+                .collect(Collectors.toList());
+
+        // Recupera gli eventi corrispondenti
+        return eventoRepository.findAllById(idsEventi)
+                .stream()
+                .map(EventoResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void approvaEvento(Long id) {
+        // Trova l'evento
+        Evento evento = eventoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Evento non trovato"));
+
+        // Trova la submission collegata e approva tramite CurationService
+        ContentSubmission submission = evento.getSubmission();
+        if (submission == null) {
+            throw new RuntimeException("Evento non sottomesso per l'approvazione");
+        }
+        curationService.approvaContenuto(submission.getId());
+    }
+
     private void checkOwnershipOrAdmin(Long ownerId, String azione) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -132,10 +149,9 @@ public class EventoService {
                 .anyMatch(role -> role.equals("ROLE_CURATORE") || role.equals("ROLE_GESTORE"));
 
         if (isAdmin) {
-            return; // Gli admin possono procedere
+            return;
         }
 
-        // Se non è admin, controlla la proprietà
         String userEmail = authentication.getName();
         Optional<Utente> utenteAttuale = utenteRepository.findByEmail(userEmail);
 

@@ -16,5 +16,5 @@ public interface MarketplaceItemRepository extends JpaRepository<MarketplaceItem
      * @param status Lo stato del prodotto (es. StatoContenuto.APPROVATO)
      * @return Lista di MarketplaceItem
      */
-    List<MarketplaceItem> findByProdottoStatus(StatoContenuto status);
+    List<MarketplaceItem> findByProdottoSubmissionStatus(StatoContenuto status);
 }

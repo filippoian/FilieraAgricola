@@ -34,6 +34,7 @@ public class AziendaService {
         azienda.setLatitudine(BigDecimal.valueOf(request.getLatitudine()));
         azienda.setLongitudine(BigDecimal.valueOf(request.getLongitudine()));
         azienda.setUtente(utente);
+        // N.B. 'approvato' è false di default come da modello Azienda
 
         return new AziendaResponse(aziendaRepository.save(azienda));
     }
@@ -55,7 +56,10 @@ public class AziendaService {
         return aziendaRepository.findAll().stream()
                 .filter(a -> a.getLatitudine() != null && a.getLongitudine() != null)
                 .filter(a -> a.getUtente() != null)
-                .filter(a -> ruolo == null || ruolo.isEmpty() || a.getUtente().getRuolo().name().equalsIgnoreCase(ruolo))
+                // CORREZIONE: Controlla se uno dei ruoli corrisponde
+                .filter(a -> ruolo == null || ruolo.isEmpty() ||
+                        a.getUtente().getRoles().stream()
+                                .anyMatch(r -> r.getName().name().equalsIgnoreCase(ruolo)))
                 .map(AziendaResponse::new)
                 .collect(Collectors.toList());
     }
@@ -68,7 +72,7 @@ public class AziendaService {
     }
 
 
-    @PreAuthorize("hasAuthority('Curatore')")
+    @PreAuthorize("hasAuthority('ROLE_CURATORE')") // Ruolo corretto
     public void approvaAzienda(Long id) {
         Azienda azienda = aziendaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Azienda non trovata"));

@@ -7,6 +7,4 @@ import java.util.List;
 
 public interface ProdottoRepository extends JpaRepository<Prodotto, Long> {
     List<Prodotto> findByUtenteId(Long utenteId);
-    List<Prodotto> findByApprovatoFalse();
-    List<Prodotto> findByApprovatoTrue();
 }
